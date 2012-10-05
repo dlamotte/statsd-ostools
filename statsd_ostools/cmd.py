@@ -43,7 +43,11 @@ def main():
     statsd = StatsClient(opts.host, opts.port, opts.prefix)
 
     os.environ['LC_ALL'] = 'C' # standardize output format (datetime, ...)
-    setproctitle('statsd-ostools: master')
+    setproctitle('statsd-ostools: master %s:%s (%s)' % (
+        opts.host,
+        opts.port,
+        opts.prefix,
+    ))
     try:
         kids = []
         for workerklass in worker.workers:
