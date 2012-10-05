@@ -64,7 +64,7 @@ def main():
     for workerklass in worker.workers:
         pid = os.fork()
         kids.append(pid)
-        if pid != 0:
+        if pid == 0:
             sys.exit(workerklass(statsd, opts.interval).run())
 
     while not SIGNALED:
