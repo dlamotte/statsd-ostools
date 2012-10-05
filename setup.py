@@ -9,7 +9,7 @@ install_requires = [
 
 setup(
     name='statsd-ostools',
-    version='0.1',
+    version='0.2',
     author='Dan LaMotte',
     author_email='lamotte85@gmail.com',
     url='https://github.com/dlamotte/statsd-ostools',
