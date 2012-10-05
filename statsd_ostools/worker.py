@@ -45,7 +45,9 @@ class Worker(object):
             data = parser.parse_one()
             self.send(data)
 
-        p.kill()
+        p.stdout.close()
+        p.terminate()
+        p.wait()
         return 0
 
 @workers.append
