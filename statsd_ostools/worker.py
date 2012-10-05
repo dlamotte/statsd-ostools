@@ -1,3 +1,4 @@
+import errno
 import logging
 import re
 import signal
@@ -42,11 +43,18 @@ class Worker(object):
         p = subprocess.Popen(self.get_cmd_argv(), stdout=subprocess.PIPE)
         parser = self.parser(p.stdout)
         while not SIGNALED:
-            data = parser.parse_one()
-            self.send(data)
+            try:
+                data = parser.parse_one()
+                self.send(data)
+            except IOError as e:
+                if e.errno != errno.EINTR:
+                    raise
+            except StopIteration:
+                break
 
-        p.stdout.close()
         p.terminate()
+        p.stdout.read()
+        p.stdout.close()
         p.wait()
         return 0
 
