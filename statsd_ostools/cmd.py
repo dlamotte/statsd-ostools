@@ -20,7 +20,12 @@ def signal_handler(signum, frame):
     SIGNALED = True
 
 def main():
-    parser = optparse.OptionParser()
+    parser = optparse.OptionParser(
+        description='send statistics with <prefix> to statsd',
+        usage='%prog [options] <prefix>',
+    )
+    parser.epilog = 'ie: %s stats.ostools.hostname' % parser.get_prog_name()
+
     parser.add_option('-H', '--host',
         dest='host', metavar='HOST', default='localhost',
         help='statsd hostname/ip (default: localhost)',
@@ -28,10 +33,6 @@ def main():
     parser.add_option('-p', '--port',
         dest='port', metavar='PORT', type='int', default=8125,
         help='statsd port (default: 8125)',
-    )
-    parser.add_option('-P', '--prefix',
-        dest='prefix', metavar='PREFIX', default='stats',
-        help='statsd prefix (default: stats)',
     )
     parser.add_option('-i', '--interval',
         dest='interval', metavar='INT', type='int', default=10,
@@ -43,18 +44,23 @@ def main():
     )
     (opts, args) = parser.parse_args()
 
+    if len(args) != 1:
+        parser.error('Please supply a stats prefix')
+        sys.exit(1)
+    prefix = args[0]
+
     if opts.debug:
         rootlogger = logging.getLogger()
         rootlogger.setLevel(logging.DEBUG)
         del rootlogger
 
-    statsd = StatsClient(opts.host, opts.port, opts.prefix)
+    statsd = StatsClient(opts.host, opts.port, prefix)
 
     os.environ['LC_ALL'] = 'C' # standardize output format (datetime, ...)
     setproctitle('statsd-ostools: master %s:%s (%s)' % (
         opts.host,
         opts.port,
-        opts.prefix,
+        prefix,
     ))
 
     signal.signal(signal.SIGINT, signal_handler)
