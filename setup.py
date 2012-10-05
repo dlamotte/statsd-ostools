@@ -12,7 +12,7 @@ setup(
     version='0.1',
     author='Dan LaMotte',
     author_email='lamotte85@gmail.com',
-    url='',
+    url='https://github.com/dlamotte/statsd-ostools',
     description='Tools for sending OS performance data to statsd',
     long_description=open('README.md').read(),
     packages=find_packages('.'),
