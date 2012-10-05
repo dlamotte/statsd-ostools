@@ -13,3 +13,8 @@ Supported Tools
 Example usage:
 
     statsd-ostools --prefix stats.ostools.hostname
+
+Installation
+============
+
+    pip install -e git+https://github.com/dlamotte/statsd-ostools.git#egg=statsd-ostools
