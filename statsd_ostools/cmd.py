@@ -1,6 +1,8 @@
+import errno
 import logging
 import optparse
 import os
+import signal
 import socket
 import sys
 import time
@@ -10,6 +12,12 @@ from statsd_ostools import worker
 
 log = logging.getLogger(__name__)
 logging.basicConfig(format='%(levelname)s: %(message)s')
+
+SIGNALED = False
+
+def signal_handler(signum, frame):
+    global SIGNALED
+    SIGNALED = True
 
 def main():
     parser = optparse.OptionParser()
@@ -48,19 +56,32 @@ def main():
         opts.port,
         opts.prefix,
     ))
-    try:
-        kids = []
-        for workerklass in worker.workers:
-            pid = os.fork()
-            kids.append(pid)
-            if pid != 0:
-                sys.exit(workerklass(statsd, opts.interval).run())
 
-        while True:
-            log.debug('master: sleeping...')
-            time.sleep(opts.interval)
-    except KeyboardInterrupt:
-        pass
+    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler)
+
+    kids = []
+    for workerklass in worker.workers:
+        pid = os.fork()
+        kids.append(pid)
+        if pid != 0:
+            sys.exit(workerklass(statsd, opts.interval).run())
+
+    while not SIGNALED:
+        log.debug('master: sleeping...')
+        time.sleep(opts.interval)
+
+    for pid in kids:
+        exceptions = []
+        try:
+            os.kill(pid, signal.SIGTERM)
+            os.waitpid(pid, 0)
+        except OSError as e:
+            if e.errno not in (errno.ECHILD, errno.ESRCH):
+                exceptions.append(sys.exc_info())
+
+    for exc_info in exceptions:
+        log.error('unhandled error during cleanup', exc_info=exc_info)
 
     sys.exit(0)
 

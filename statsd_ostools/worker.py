@@ -1,5 +1,6 @@
 import logging
 import re
+import signal
 import subprocess
 from setproctitle import setproctitle
 from statsd_ostools import parser
@@ -10,6 +11,12 @@ workers = []
 re_space = re.compile(r'\s+')
 re_slash = re.compile(r'/+')
 re_nonalphanum = re.compile(r'[^a-zA-Z_\-0-9\.]')
+
+SIGNALED = False
+
+def signal_handler(signum, frame):
+    global SIGNALED
+    SIGNALED = True
 
 class Worker(object):
     def __init__(self, statsd, interval):
@@ -28,16 +35,15 @@ class Worker(object):
         return ' '.join(self.get_cmd_argv())
 
     def run(self):
-        setproctitle('statsd-ostools: %s' % self.get_cmd_string())
-        try:
-            p = subprocess.Popen(self.get_cmd_argv(), stdout=subprocess.PIPE)
-            parser = self.parser(p.stdout)
-            while True:
-                data = parser.parse_one()
-                self.send(data)
+        signal.signal(signal.SIGINT, signal_handler)
+        signal.signal(signal.SIGTERM, signal_handler)
 
-        except KeyboardInterrupt:
-            pass
+        setproctitle('statsd-ostools: %s' % self.get_cmd_string())
+        p = subprocess.Popen(self.get_cmd_argv(), stdout=subprocess.PIPE)
+        parser = self.parser(p.stdout)
+        while not SIGNALED:
+            data = parser.parse_one()
+            self.send(data)
 
         return 0
 
