@@ -15,21 +15,31 @@ re_nonalphanum = re.compile(r'[^a-zA-Z_\-0-9\.]')
 
 SIGNALED = False
 
+
 def signal_handler(signum, frame):
+    _ = signum, frame
     global SIGNALED
     SIGNALED = True
 
+
 class Worker(object):
-    def __init__(self, statsd, interval):
+    parser = None
+
+    def __init__(self, statsd, interval, send_integers):
         self.statsd = statsd
         self.interval = interval
+        self.send_integers = send_integers
+
+    def get_cmd_argv(self):
+        raise NotImplementedError()
+
+    def send(self, data):
+        raise NotImplementedError()
 
     def clean_key(self, key):
-        return \
-        re_nonalphanum.sub('',
-           re_slash.sub('-',
-               re_space.sub('_', key.replace('%', 'p'))
-            )
+        _ = self  # No static method, allow workers to override
+        return re_nonalphanum.sub('',
+            re_slash.sub('-', re_space.sub('_', key.replace('%', 'p')))
         )
 
     def get_cmd_string(self):
@@ -41,10 +51,10 @@ class Worker(object):
 
         setproctitle('statsd-ostools: %s' % self.get_cmd_string())
         p = subprocess.Popen(self.get_cmd_argv(), stdout=subprocess.PIPE)
-        parser = self.parser(p.stdout)
+        run_parser = self.parser(p.stdout)
         while not SIGNALED:
             try:
-                data = parser.parse_one()
+                data = run_parser.parse_one()
                 self.send(data)
             except IOError as e:
                 if e.errno != errno.EINTR:
@@ -57,6 +67,7 @@ class Worker(object):
         p.stdout.close()
         p.wait()
         return 0
+
 
 @workers.append
 class IOStatWorker(Worker):
@@ -71,9 +82,12 @@ class IOStatWorker(Worker):
             dev = row[0][1]
             prefix = '%s.%s.' % (self.name, dev)
             for k, v in row[1:]:
+                if self.send_integers is True:
+                    v = int(float(v))
                 key = prefix + self.clean_key(k)
                 log.debug('%s: %s' % (key, v))
                 self.statsd.gauge(key, v)
+
 
 @workers.append
 class MPStatWorker(Worker):
@@ -88,9 +102,12 @@ class MPStatWorker(Worker):
             cpu = row[0][1]
             prefix = '%s.%s.' % (self.name, cpu)
             for k, v in row[1:]:
+                if self.send_integers is True:
+                    v = int(float(v))
                 key = prefix + self.clean_key(k)
                 log.debug('%s: %s' % (key, v))
                 self.statsd.gauge(key, v)
+
 
 @workers.append
 class VMStatWorker(Worker):
@@ -103,6 +120,8 @@ class VMStatWorker(Worker):
     def send(self, data):
         prefix = '%s.' % self.name
         for k, v in data:
+            if self.send_integers is True:
+                v = int(float(v))
             key = prefix + self.clean_key(k)
             log.debug('%s: %s' % (key, v))
             self.statsd.gauge(key, v)

@@ -4,11 +4,15 @@ import re
 log = logging.getLogger(__name__)
 re_spaces = re.compile(r'\s+')
 
+
 class Parser(object):
     def __init__(self, fp):
         self.fp = fp
         self.state = 0
         self.keys = []
+
+    def parse_one(self):
+        raise NotImplementedError()
 
     def __iter__(self):
         while True:
@@ -19,6 +23,7 @@ class Parser(object):
         if line == '':
             raise StopIteration
         return line
+
 
 class IOStatParser(Parser):
     def parse_one(self):
@@ -53,6 +58,7 @@ class IOStatParser(Parser):
                     return tuple(row)
                 data = re_spaces.split(line.rstrip())
                 row.append(tuple(zip(self.keys, data)))
+
 
 class MPStatParser(Parser):
     def parse_one(self):
@@ -90,6 +96,7 @@ class MPStatParser(Parser):
                     return tuple(row)
                 row.append(tuple(zip(self.keys, split[1:])))
 
+
 class VMStatParser(Parser):
     def parse_one(self):
         while True:
@@ -118,4 +125,3 @@ class VMStatParser(Parser):
             elif self.state == 3:
                 # skip header line
                 self.state = 2
-

@@ -3,7 +3,6 @@ import logging
 import optparse
 import os
 import signal
-import socket
 import sys
 import time
 from setproctitle import setproctitle
@@ -15,9 +14,12 @@ logging.basicConfig(format='%(levelname)s: %(message)s')
 
 SIGNALED = False
 
+
 def signal_handler(signum, frame):
+    _ = signum, frame
     global SIGNALED
     SIGNALED = True
+
 
 def main():
     parser = optparse.OptionParser(
@@ -27,21 +29,20 @@ def main():
     parser.epilog = 'ie: %s stats.ostools.hostname' % parser.get_prog_name()
 
     parser.add_option('-H', '--host',
-        dest='host', metavar='HOST', default='localhost',
-        help='statsd hostname/ip (default: localhost)',
-    )
+                      dest='host', metavar='HOST', default='localhost',
+                      help='statsd hostname/ip (default: localhost)')
     parser.add_option('-p', '--port',
-        dest='port', metavar='PORT', type='int', default=8125,
-        help='statsd port (default: 8125)',
-    )
+                      dest='port', metavar='PORT', type='int', default=8125,
+                      help='statsd port (default: 8125)')
     parser.add_option('-i', '--interval',
-        dest='interval', metavar='INT', type='int', default=10,
-        help='interval to pass to stat commands (default: 10)',
-    )
+                      dest='interval', metavar='INT', type='int', default=10,
+                      help='interval to pass to stat commands (default: 10)')
     parser.add_option('-d', '--debug',
-        dest='debug', action='store_true', default=False,
-        help='turn on debugging',
-    )
+                      dest='debug', action='store_true', default=False,
+                      help='turn on debugging')
+    parser.add_option('--send-integers',
+                      dest='send_integers', action='store_true', default=False,
+                      help='send integers instead of floats for compatibility (e.g. hekad)')
     (opts, args) = parser.parse_args()
 
     if len(args) != 1:
@@ -56,7 +57,7 @@ def main():
 
     statsd = StatsClient(opts.host, opts.port, prefix)
 
-    os.environ['LC_ALL'] = 'C' # standardize output format (datetime, ...)
+    os.environ['LC_ALL'] = 'C'  # Standardize output format (datetime, ...)
     setproctitle('statsd-ostools: master %s:%s (%s)' % (
         opts.host,
         opts.port,
@@ -71,14 +72,14 @@ def main():
         pid = os.fork()
         kids.append(pid)
         if pid == 0:
-            sys.exit(workerklass(statsd, opts.interval).run())
+            sys.exit(workerklass(statsd, opts.interval, opts.send_integers).run())
 
     while not SIGNALED:
         log.debug('master: sleeping...')
         time.sleep(opts.interval)
 
+    exceptions = []
     for pid in kids:
-        exceptions = []
         try:
             os.kill(pid, signal.SIGTERM)
             os.waitpid(pid, 0)
