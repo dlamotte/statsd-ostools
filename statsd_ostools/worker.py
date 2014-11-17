@@ -36,8 +36,8 @@ class Worker(object):
     def send(self, data):
         raise NotImplementedError()
 
-    @staticmethod
-    def clean_key(key):
+    def clean_key(self, key):
+        _ = self  # No static method, allow workers to override
         return re_nonalphanum.sub('',
             re_slash.sub('-', re_space.sub('_', key.replace('%', 'p')))
         )
@@ -84,7 +84,7 @@ class IOStatWorker(Worker):
             for k, v in row[1:]:
                 if self.send_integers is True:
                     v = int(float(v))
-                key = prefix + Worker.clean_key(k)
+                key = prefix + self.clean_key(k)
                 log.debug('%s: %s' % (key, v))
                 self.statsd.gauge(key, v)
 
@@ -104,7 +104,7 @@ class MPStatWorker(Worker):
             for k, v in row[1:]:
                 if self.send_integers is True:
                     v = int(float(v))
-                key = prefix + Worker.clean_key(k)
+                key = prefix + self.clean_key(k)
                 log.debug('%s: %s' % (key, v))
                 self.statsd.gauge(key, v)
 
@@ -122,6 +122,6 @@ class VMStatWorker(Worker):
         for k, v in data:
             if self.send_integers is True:
                 v = int(float(v))
-            key = prefix + Worker.clean_key(k)
+            key = prefix + self.clean_key(k)
             log.debug('%s: %s' % (key, v))
             self.statsd.gauge(key, v)
