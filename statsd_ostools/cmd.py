@@ -42,6 +42,10 @@ def main():
         dest='debug', action='store_true', default=False,
         help='turn on debugging',
     )
+    parser.add_option('--send-integers',
+        dest='send_integers', action='store_true', default=False,
+        help='send integers to statsd instead of floats for compatibility with certain statsd servers (e.g. hekad)'
+    )
     (opts, args) = parser.parse_args()
 
     if len(args) != 1:
@@ -71,7 +75,7 @@ def main():
         pid = os.fork()
         kids.append(pid)
         if pid == 0:
-            sys.exit(workerklass(statsd, opts.interval).run())
+            sys.exit(workerklass(statsd, opts.interval, opts.send_integers).run())
 
     while not SIGNALED:
         log.debug('master: sleeping...')

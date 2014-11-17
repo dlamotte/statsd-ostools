@@ -20,9 +20,10 @@ def signal_handler(signum, frame):
     SIGNALED = True
 
 class Worker(object):
-    def __init__(self, statsd, interval):
+    def __init__(self, statsd, interval, send_integers):
         self.statsd = statsd
         self.interval = interval
+        self.send_integers = send_integers
 
     def clean_key(self, key):
         return \
@@ -71,6 +72,8 @@ class IOStatWorker(Worker):
             dev = row[0][1]
             prefix = '%s.%s.' % (self.name, dev)
             for k, v in row[1:]:
+                if self.send_integers is True:
+                    v = int(float(v))
                 key = prefix + self.clean_key(k)
                 log.debug('%s: %s' % (key, v))
                 self.statsd.gauge(key, v)
@@ -88,6 +91,8 @@ class MPStatWorker(Worker):
             cpu = row[0][1]
             prefix = '%s.%s.' % (self.name, cpu)
             for k, v in row[1:]:
+                if self.send_integers is True:
+                    v = int(float(v))
                 key = prefix + self.clean_key(k)
                 log.debug('%s: %s' % (key, v))
                 self.statsd.gauge(key, v)
@@ -103,6 +108,8 @@ class VMStatWorker(Worker):
     def send(self, data):
         prefix = '%s.' % self.name
         for k, v in data:
+            if self.send_integers is True:
+                v = int(float(v))
             key = prefix + self.clean_key(k)
             log.debug('%s: %s' % (key, v))
             self.statsd.gauge(key, v)
