@@ -23,11 +23,12 @@ def signal_handler(signum, frame):
 
 
 class Worker(object):
+    parser = None
+
     def __init__(self, statsd, interval, send_integers):
         self.statsd = statsd
         self.interval = interval
         self.send_integers = send_integers
-        self.parser = None
 
     def get_cmd_argv(self):
         raise NotImplementedError()
