@@ -1,6 +1,8 @@
 statsd-ostools
 ==============
 
+[![No Maintenance Intended](http://unmaintained.tech/badge.svg)](http://unmaintained.tech/)
+
 Tools for sending OS data to statsd (currently only supports Linux).
 
 Supported Tools
